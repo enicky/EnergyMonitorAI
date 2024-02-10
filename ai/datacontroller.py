@@ -4,8 +4,9 @@ import pandas as pd
 import numpy
 import os
 
-import logging
-logging.basicConfig(level=logging.INFO)
+import logging, coloredlogs
+logger = logging.getLogger(__name__)
+coloredlogs.install('DEBUG', logger=logger)
 
 class DataController:
     def __init__(
@@ -41,23 +42,23 @@ class DataController:
 
     def printDebugInfo(self, status, step_message, input_df, output_df):
         if status is True:
-            logging.info(f'------------------------[OK]------------------------')
-            logging.info(f'[DEBUG] - {step_message}')
-            logging.info(f'[DEBUG] - IN shape {input_df.shape} / OUT shape {output_df.shape}')
-            logging.info(f'\r\n')
+            logger.info(f'------------------------[OK]------------------------')
+            logger.info(f'[DEBUG] - {step_message}')
+            logger.info(f'[DEBUG] - IN shape {input_df.shape} / OUT shape {output_df.shape}')
+            logger.info(f'\r\n')
         if status is False:
-            logging.info(f'------------------------[ERROR]------------------------')
-            logging.info(f'[DEBUG] - {step_message}')
-            logging.info(f'[DEBUG] - IN shape {input_df.shape} / OUT shape {output_df.shape}')
-            logging.info(f'\r\n')
+            logger.info(f'------------------------[ERROR]------------------------')
+            logger.info(f'[DEBUG] - {step_message}')
+            logger.info(f'[DEBUG] - IN shape {input_df.shape} / OUT shape {output_df.shape}')
+            logger.info(f'\r\n')
             return
 
     def readData(self):
         # Get a list of CSV files in the folder and sort it
         full_path = f'{self.folder_path}/*.csv'
-        logging.info(f'full path: {full_path}')
+        logger.info(f'full path: {full_path}')
         csv_files = sorted(glob.glob(self.folder_path + "/*.csv"), reverse=True)
-        logging.info(f'CSV FILES {csv_files}')
+        logger.info(f'CSV FILES {csv_files}')
 
         # Initialize an empty list to store DataFrames
         data_frames = []
@@ -77,31 +78,31 @@ class DataController:
         # Iterate through each CSV file and read it into a DataFrame, then append to the list
         for file in csv_files:
             if os.stat(file).st_size > 0:
-                logging.info(f'[datacontroller:readData] processing file {file}')
+                logger.info(f'[datacontroller:readData] processing file {file}')
                 data = pd.read_csv(file, sep=",", decimal=".", index_col="time", dtype={'bme_hum': numpy.float64, 'energy_power': numpy.float64})
-                #logging.info(f'[readData] data = {data}')
+                #logger.info(f'[readData] data = {data}')
                 data.drop(drop_features_list, axis='columns', inplace=True)
                 
                 # Load data from csv using pandas read_csv method
                 # data = pd.read_csv(file, sep=",", decimal=".", index_col="time")
-                # logging.info(f'[readData] data = {data}')
+                # logger.info(f'[readData] data = {data}')
                 # data.drop(drop_features_list, axis='columns', inplace=True)
                 # data['tijd'] = data.index
-                # logging.info(f'[readData] data after first drop')
-                # logging.info(data)
-                # logging.info(f'[readData] type  : {type(data)}')
-                # logging.info(f'[] test = {test}')
-                # #logging.info(f'[] data energy power: {data[data["energy_power"] > 5000].index}')
+                # logger.info(f'[readData] data after first drop')
+                # logger.info(data)
+                # logger.info(f'[readData] type  : {type(data)}')
+                # logger.info(f'[] test = {test}')
+                # #logger.info(f'[] data energy power: {data[data["energy_power"] > 5000].index}')
                 # #TODO fix following line
                 data = data.drop(data[data["energy_power"] > 5000].index)
 
                 data_frames.append(data)
-        #logging.info(f'[readData] data_frames : {data_frames}')
+        #logger.info(f'[readData] data_frames : {data_frames}')
         csv_df = pd.concat(data_frames)[::-1]
-        #logging.info(f'[readData] csv_df : {csv_df}')
+        #logger.info(f'[readData] csv_df : {csv_df}')
 
         condition = csv_df.index.is_monotonic_increasing 
-        logging.info(f'[readData] condition {condition}')
+        logger.info(f'[readData] condition {condition}')
         self.printDebugInfo(condition, "Data Read", pd.DataFrame(), csv_df)
 
         return csv_df if condition else pd.DataFrame()
@@ -109,31 +110,31 @@ class DataController:
     def prepareData(self, f_df):
         data = f_df.copy()
         # Convert index to datetime
-        #logging.info('[prepareData] pre to_datetime')
+        #logger.info('[prepareData] pre to_datetime')
         data.index = pd.to_datetime(data.index)
         #data['date'] = data.index
-        #logging.info(f'[prepareData] data index : {data.index}')
+        #logger.info(f'[prepareData] data index : {data.index}')
 
         # Round the index timestamps to the nearest minute
         data.index = data.index.round(self.period_between_each_row)
-        #logging.info(f'[prepareData] na round on time {data.index}')
+        #logger.info(f'[prepareData] na round on time {data.index}')
 
         # Group by the rounded index timestamps and calculate the mean for each group
         data = data.groupby(level=0).mean()
 
         condition = data.shape[0] < f_df.shape[0] and data.shape[1] == f_df.shape[1]
         self.printDebugInfo(condition, "Data Prepare", f_df, data)
-        #logging.info(f'[prepareData] condition : {condition} ==> {data.shape[0]} < {f_df.shape[0]} and {data.shape[1]} == {f_df.shape[1]}')
+        #logger.info(f'[prepareData] condition : {condition} ==> {data.shape[0]} < {f_df.shape[0]} and {data.shape[1]} == {f_df.shape[1]}')
         return data if condition else pd.DataFrame()
 
     def createFeaturesData(self, f_df):
-        #logging.info(f'[createFeaturesData] f_df : {f_df}')
+        #logger.info(f'[createFeaturesData] f_df : {f_df}')
         data = f_df.copy()
-        #logging.info(f'[createFeaturesData] index : {data}')
+        #logger.info(f'[createFeaturesData] index : {data}')
         data["hour"] = data.index.hour
         data["day_of_week"] = data.index.dayofweek
         data["day_of_year"] = data.index.dayofyear
-        #logging.info(f'[createFeaturesData] data : {data}')
+        #logger.info(f'[createFeaturesData] data : {data}')
         # If you want to include additional time-related features, you can uncomment the lines below
 
         # data['quarter'] = data.index.quarter
@@ -168,17 +169,17 @@ class DataController:
 
     def splitData(self, f_df : pd.DataFrame):
         data = f_df.copy()
-        #logging.info(f'[splitData] index : {data.index}')
+        #logger.info(f'[splitData] index : {data.index}')
         start_index = int(len(data) * self.train_test_split_factor)
         test_start = data.index[start_index]
         test_end = data.index[len(data)-1]
-        #logging.info(f'[splitData]  len(data) = {len(data)}  start_index = {start_index} end_index = {test_end}')
+        #logger.info(f'[splitData]  len(data) = {len(data)}  start_index = {start_index} end_index = {test_end}')
         
-        #logging.info(f'[splitData] typeof test_start {type(test_start)}')
-        #logging.info(f'[splitData] test_start : {test_start}')
+        #logger.info(f'[splitData] typeof test_start {type(test_start)}')
+        #logger.info(f'[splitData] test_start : {test_start}')
         
         data_train = data.loc[data.index[0]:test_start].copy()
-        #logging.info(f'[splitData] data_train : {data_train} => ')
+        #logger.info(f'[splitData] data_train : {data_train} => ')
         data_test = data.loc[test_start:test_end].copy()
 
         condition = (
@@ -196,12 +197,12 @@ class DataController:
         )
 
     def scaleTransformData(self, f_df, shiftFollowColumn, action=""):
-        logging.info(f'[scaleTransformData] calling action {action}')
+        logger.info(f'[scaleTransformData] calling action {action}')
         data = f_df.copy()
         data_features = data[self.columns_features].copy()
-        logging.info(f'[scaleTransformData] data_features = {data_features.columns}')
+        logger.info(f'[scaleTransformData] data_features = {data_features.columns}')
         data_others = data.drop(columns=self.columns_features).copy()
-        logging.info(f'[scaleTransformData] data_others = {data_others.columns}')
+        logger.info(f'[scaleTransformData] data_others = {data_others.columns}')
 
         data_out = pd.DataFrame()
 
@@ -218,15 +219,15 @@ class DataController:
                 index=data.index,
             )
         elif action == "fit":
-            #logging.info(f'[scaleTransformData] calling fit on {data_features.values}')
+            #logger.info(f'[scaleTransformData] calling fit on {data_features.values}')
             self.scaler_features.fit(data_features.values)
         else:
             # Handling for other actions or raise an exception for unsupported actions
             raise ValueError("Unsupported action")
-        logging.info(f'========= FIT HAS BEEN PERFORMED ON SCALAR FEATURES ============')
+        logger.info(f'========= FIT HAS BEEN PERFORMED ON SCALAR FEATURES ============')
         first_fit_done = False
         for column in data_others.columns:
-            logging.info(f'[scaleTransformData] column {column} / {action}')
+            logger.info(f'[scaleTransformData] column {column} / {action}')
             if action == "transform":
                 data_out[column] = self.scaler_energy.transform(
                     data_others[[column]].values
@@ -237,16 +238,16 @@ class DataController:
                 )
             elif action == "fit":
                 if not first_fit_done:
-                    logging.info(f'[scaleTransformData] not first fit done ... so ... ')
+                    logger.info(f'[scaleTransformData] not first fit done ... so ... ')
                     self.scaler_energy.fit(data_others[[column]].values)
                     first_fit_done = True
 
         condition = (
             data_out.shape[0] == f_df.shape[0] and data_out.shape[1] == f_df.shape[1]
         )
-        logging.info(f'[scaleTransformData] condition = {condition}')
-        logging.info(f'[scaleTransformData] data_out.shape[0] == f_df.shape[0] => {data_out.shape[0]} == {f_df.shape[0]}')
-        logging.info(f'[scaleTransformData] data_out.shape[1] == f_df.shape[1] => {data_out.shape[1]} == {f_df.shape[1]}')
+        logger.info(f'[scaleTransformData] condition = {condition}')
+        logger.info(f'[scaleTransformData] data_out.shape[0] == f_df.shape[0] => {data_out.shape[0]} == {f_df.shape[0]}')
+        logger.info(f'[scaleTransformData] data_out.shape[1] == f_df.shape[1] => {data_out.shape[1]} == {f_df.shape[1]}')
         
         self.printDebugInfo(condition, f"Data scale {action}", f_df, data_out)
         return data_out if condition else pd.DataFrame()

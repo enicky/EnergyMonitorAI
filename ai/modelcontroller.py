@@ -1,5 +1,7 @@
 import torch
-import logging
+import logging, coloredlogs
+logger = logging.getLogger(__name__)
+coloredlogs.install('DEBUG', logger=logger)
 
 class ModelController:
     def __init__(self, model, loss_function, optimizer, model_train_epoch_count):
@@ -42,22 +44,22 @@ class ModelController:
 
     
     def train_test_model(self, train_loader, test_loader, model_filename):
-        #log.info(f'[modelcontroller:train_test_model] train_loader : {train_loader}')
+        logger.info(f'[modelcontroller:train_test_model] train_loader : {train_loader}')
         # clear_output(wait=True)
         train_loss_values = []
         test_loss_values = []
 
         for ix_epoch in range(self.model_train_epoch_count):
             if ix_epoch % 10 == 0:
-                logging.info(f'[modelcontroller:test_train_model] start processing epoch {ix_epoch}')
+                logger.info(f'[modelcontroller:test_train_model] start processing epoch {ix_epoch}')
             train_loss = self.train_model(train_loader)
             test_loss = self.test_model(test_loader)
             train_loss_values.append(train_loss)
             test_loss_values.append(test_loss)
             if ix_epoch %10 == 0:
-                logging.info(f'[modelcontroller:test_train_model] train loss : {train_loss}')
-                logging.info(f"[modelcontroller:test_train_model] test loss  : {test_loss}")
-                logging.info('---------------------')
+                logger.info(f'[modelcontroller:test_train_model] train loss : {train_loss}')
+                logger.info(f"[modelcontroller:test_train_model] test loss  : {test_loss}")
+                logger.info('---------------------')
 
         torch.save(self.model.state_dict(), model_filename)
         return train_loss_values, test_loss_values

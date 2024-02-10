@@ -36,7 +36,7 @@ class RabbitHandler(object):
     _queue_name = 'test_queue'
     _exchange_name = 'test_exchange'
     _routing_key = 'test.*'
-    _routing_name = 'test.a'
+    _routing_name = 'test.*'
     
     @staticmethod
     def getInstance():
@@ -45,76 +45,58 @@ class RabbitHandler(object):
             RabbitHandler()
         return RabbitHandler.__instance
     
+    @property
+    def is_ready(self):
+        return self._ready
+    
     
     def __init__(self) -> None:
         logger.info(f'[RabbitHandler:__init__] lets see what happens')
         if RabbitHandler.__instance != None:
             raise Exception('This class is a singleton')
         else:
-            RabbitHandler.__instance = self       
+            RabbitHandler.__instance = self      
+            self.creds = pika.PlainCredentials("ai", "Aveve2008")
+            self.connection_parameters = pika.ConnectionParameters(host='192.168.1.181', port=5672, credentials=self.creds)
+            self.connection = RabbitMqConnectionClass(connection_parameters=self.connection_parameters)      
+            logger.info(f'{self._logPrefix} registering handle_on_ready')
+            self.connection.handle_on_ready(self.on_ready)      
+        logger.info('[RabbitHandler:__init__] finished init ')
+            
     
     async def prepare_connections(self):
-        
         logger.info(f'[RabbitHandler:prepare_connections] start preparing connections')    
-        self.creds = pika.PlainCredentials("ai", "Aveve2008")
-        self.connection_parameters = pika.ConnectionParameters(host='192.168.1.181', port=5672, credentials=self.creds)
-        self.connection = RabbitMqConnectionClass(connection_parameters=self.connection_parameters)      
-        logger.info(f'{self._logPrefix} registering handle_on_ready')
-        self.connection.handle_on_ready(self.on_ready)                  
         self.connection.start()
-        while not self.connection.ready:
-            logger.info(f'{self._logPrefix} connection is not ready yet. Start sleep')
-            time.sleep(1)
-        
-        logger.info(f'{self._logPrefix} Connection is ready. Start declaring exchange and queue')
-        self.connection.declare_exchange(ExchangeParams(self._exchange_name), self.on_exchange_ready)
-        self.connection.declare_queue(QueueParams(self._queue_name), self.on_queue_ready)
-        self.producer = RMQProducer(connection_parameters=self.connection_parameters)
-        
-        self.producer.start()
-        while not self.producer.ready:
-            time.sleep(2)
-        logger.info(f'{self._logPrefix} producer started ')    
-        self._ready = True
-        # producer.publish(jsonify(object_to_send), 
-        #             exchange_params=ExchangeParams("ai_processing"),
-        #             routing_key="ai")
-        
-        
-    def on_queue_binding(self, x):
-        logger.info(f'[RabbitHandler:on_queue_binding] queue binding has been setup -> {x}')    
-        self._queue_binding = True
-        
+    
     def on_exchange_ready(self):
         logger.info(f'[RabbitHandler:on_exchange_ready] exchange has been declared')    
         self._exchange_ready = True
+        self.connection.declare_queue(QueueParams(self._queue_name), self.on_queue_ready)
     
     def on_queue_ready(self, x):
         logger.info(f'[RabbitHandler:on_queue_ready] queue is ready => {x}')
         self._queue_ready = True
-        
-        self.connection.bind_queue(QueueBindParams(queue=self._queue_name, exchange=self._exchange_name, routing_key=self._routing_key), self.on_queue_binding)
-        
-    def on_producer_ready(self):
+        self.connection.bind_queue(QueueBindParams(
+                    queue=self._queue_name, 
+                    exchange=self._exchange_name, 
+                    routing_key=self._routing_key), 
+                self.on_queue_binding)
+    
+    def on_queue_binding(self, x):
+        logger.info(f'[RabbitHandler:on_queue_binding] queue binding has been setup -> {x}')    
+        self._queue_binding_ready = True
+        self.producer = RMQProducer(connection_parameters=self.connection_parameters)
+        self.producer.start()
+        while not self.producer.ready:
+            logger.debug(f'{self._logPrefix} Producer wasnt ready yet. Sleep for 2 seconds.')
+            time.sleep(2)
+        logger.debug(f'{self._logPrefix} producer became ready.')
         self._ready = True
-        
+            
     def on_ready(self):
         #self._ready = True
         logger.info(f'{self._logPrefix} handling onready of connection')
-        self.connection.declare_exchange(ExchangeParams(self._exchange_name), self.on_exchange_ready)
-        self.connection.declare_queue(QueueParams(self._queue_name), self.on_queue_ready)
-        self.producer = RMQProducer(connection_parameters=self.connection_parameters)
-        
-        self.producer.start()
-        while not self.producer.ready:
-            time.sleep(2)
-        logger.info(f'{self._logPrefix} producer started ')    
-        self._ready = True
-        # producer.publish(jsonify(object_to_send), 
-        #             exchange_params=ExchangeParams("ai_processing"),
-        #             routing_key="ai")
-        
-        pass
+        self.connection.declare_exchange(ExchangeParams(self._exchange_name), self.on_exchange_ready)     
     
     def publish_message(self, object_to_send):
         logger.info(f'{self._logPrefix} start sending object to RabbitMQ -> {self._ready}')
