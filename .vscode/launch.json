@@ -10,6 +10,25 @@
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: main with Dapr",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "dapr-debug",
+            "postDebugTask": "daprd-down"
+        },
+        {
+            "name": "Python Debugger: main with Dapr with Dapr",
+            "type": "debugpy",
+            
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "dapr-debug",
+            "postDebugTask": "daprd-down"
         }
     ]
 }

@@ -44,22 +44,22 @@ class ModelController:
 
     
     def train_test_model(self, train_loader, test_loader, model_filename):
-        logger.info(f'[modelcontroller:train_test_model] train_loader : {train_loader}')
+        logger.debug(f'[modelcontroller:train_test_model] train_loader : {train_loader}')
         # clear_output(wait=True)
         train_loss_values = []
         test_loss_values = []
 
         for ix_epoch in range(self.model_train_epoch_count):
             if ix_epoch % 10 == 0:
-                logger.info(f'[modelcontroller:test_train_model] start processing epoch {ix_epoch}')
+                logger.debug(f'[modelcontroller:test_train_model] start processing epoch {ix_epoch}')
             train_loss = self.train_model(train_loader)
             test_loss = self.test_model(test_loader)
             train_loss_values.append(train_loss)
             test_loss_values.append(test_loss)
             if ix_epoch %10 == 0:
-                logger.info(f'[modelcontroller:test_train_model] train loss : {train_loss}')
-                logger.info(f"[modelcontroller:test_train_model] test loss  : {test_loss}")
-                logger.info('---------------------')
+                logger.debug(f'[modelcontroller:test_train_model] train loss : {train_loss}')
+                logger.debug(f"[modelcontroller:test_train_model] test loss  : {test_loss}")
+                logger.debug('---------------------')
 
         torch.save(self.model.state_dict(), model_filename)
         return train_loss_values, test_loss_values

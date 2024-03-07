@@ -27,10 +27,10 @@ batch_size = 64
 sequence_length = 30
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#logger.info(device)
-#logger.info(sys.version)
-#logger.info(f'pd. __version__ == {pd.__version__}')
-#logger.info(f'torch version {torch.__version__}')
+#logger.debug(device)
+#logger.debug(sys.version)
+#logger.debug(f'pd. __version__ == {pd.__version__}')
+#logger.debug(f'torch version {torch.__version__}')
 
 class PR:
     def __init__(self) -> None:
@@ -60,14 +60,14 @@ class PR:
         data = dataController.createFeaturesData(data)
 
         features = list(data.columns.difference([target_sensor]))
-        logger.info(f'[update] features : {features}')
+        logger.debug(f'[update] features : {features}')
         shiftFollowColumn = f"{target_sensor}_follow{forecast_follow}"
-        #logger.info(f'[main] shiftFollowColumn {shiftFollowColumn}')
-        #logger.info(f'[main] len(data)= {len(data)}')
+        #logger.debug(f'[main] shiftFollowColumn {shiftFollowColumn}')
+        #logger.debug(f'[main] len(data)= {len(data)}')
         data = dataController.createShiftColumn(data, shiftFollowColumn)
-        #logger.info(f'[main] len(data)= {len(data)}')
+        #logger.debug(f'[main] len(data)= {len(data)}')
         data_train, data_test = dataController.splitData(data)
-        logger.info(f'[main] data_train {len(data_train)} and data_test {len(data_test)}' )
+        logger.debug(f'[main] data_train {len(data_train)} and data_test {len(data_test)}' )
         dataController.scaleTransformData(data_train, shiftFollowColumn, "fit")
 
         data_train = dataController.scaleTransformData(
@@ -92,13 +92,13 @@ class PR:
             sequence_length=sequence_length,
         )
 
-        logger.info('[main] train_loader')
+        logger.debug('[main] train_loader')
         train_loader = DataLoader(SeqData_train, batch_size=batch_size, shuffle=True, pin_memory=True)
-        logger.info('[main] test_loader')
+        logger.debug('[main] test_loader')
         self.test_loader = DataLoader(SeqData_test, batch_size=batch_size, shuffle=False, pin_memory=True)
-        logger.info('[main] train_eval_loader')
+        logger.debug('[main] train_eval_loader')
         train_eval_loader = DataLoader(SeqData_train, batch_size=batch_size, shuffle=False, pin_memory = True)
-        logger.info('[main] finished dataloaders ')
+        logger.debug('[main] finished dataloaders ')
         self.model = ShallowRegressionLSTM(
             num_sensors=len(features), hidden_units=num_hidden_units
         )
@@ -108,7 +108,7 @@ class PR:
         modelController = ModelController(
             self.model, loss_function, optimizer, model_train_epoch_count
         )
-        logger.info(f'{logPrefix} Start training model on {model_filename}')
+        logger.debug(f'{logPrefix} Start training model on {model_filename}')
         train_loss_list, test_loss_list = modelController.train_test_model(
             train_loader, self.test_loader, model_filename=model_filename
         )        
@@ -125,4 +125,4 @@ class PR:
         
         model_controller = ModelController(self.model, None, None, None)
         output = model_controller.predict(self.test_loader)
-        logger.info(f'[pr:predict] output = {output}')
+        logger.debug(f'[pr:predict] output = {output}')

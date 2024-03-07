@@ -36,7 +36,7 @@ class AiHandler(Resource):
         logPrefix= '[AiHandler:post]'
         currentUuid = uuid.uuid4()
         
-        logger.info(f'[] json body {request.json} with currentUuid = {currentUuid}')
+        logger.debug(f'[] json body {request.json} with currentUuid = {currentUuid}')
         method= request.json['method']
         
         if method == 'train':
@@ -44,7 +44,7 @@ class AiHandler(Resource):
             model_file_name = f"models/model_epoch_{formatted_date}.pt"
             model_image_file_name =  f"model_x{formatted_date}"
             
-            logger.info(f'{logPrefix} process train')
+            logger.debug(f'{logPrefix} process train')
             x, train_loss_list, test_loss_list = self.trainer.process(currentUuid, model_file_name)
             plt.figure(figsize=(8, 6))
             
@@ -69,9 +69,9 @@ class AiHandler(Resource):
             return jsonify(object_to_send)
         if method == 'listmodels':
             modelsFolder = 'models'
-            logger.info(f'{logPrefix} Start Listing models ... current folder = {getcwd()}')
+            logger.debug(f'{logPrefix} Start Listing models ... current folder = {getcwd()}')
             onlyfiles = [f for f in listdir(modelsFolder) if isfile(join(modelsFolder, f))]
-            logger.info(f'{logPrefix} onlyFiles: {onlyfiles}')
+            logger.debug(f'{logPrefix} onlyFiles: {onlyfiles}')
             return jsonify({
                 'success' : True,
                 'files' : onlyfiles

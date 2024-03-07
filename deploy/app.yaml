@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aimonitor
+  labels:
+    app: aimonitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aimonitor
+  template:
+    metadata:
+      labels:
+        app: aimonitor
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "aimonitor"
+        dapr.io/app-port: "8000"
+        dapr.io/config: "aiappconfig"
+        
+    spec:
+      volumes:
+      - name: files-volume
+        persistentVolumeClaim:
+          claimName: pvc-fastapiprocessor-files
+      containers:
+      - name: processor
+        image: neichmann/aimonitor:1.8
+        env:
+        - name: APP_PORT
+          value: "8000"
+        - name: UPLOAD_FOLDER
+          value: "/files"
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: files-volume
+          mountPath: /files
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: aimonitor
+  labels:
+    app: dapr-aimonitor
+    kubernetes.io/name: aimonitor
+spec:
+  ports:
+    - name: aimonitor
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 31001
+  selector:
+    app: aimonitor
+  type: NodePort
+  sessionAffinity: None        

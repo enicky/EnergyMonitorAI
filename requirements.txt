@@ -1,11 +1,5 @@
-flask
-flask_restful
-torch
-torchvision
-scikit-learn
-pandas
-numpy 
-pyarrow
-rabbitmq-client
 coloredlogs
-matplotlib
+dapr
+fastapi
+uvicorn
+python-multipart

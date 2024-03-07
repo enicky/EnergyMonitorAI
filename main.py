@@ -1,48 +1,70 @@
+from fastapi import FastAPI, UploadFile, File
+from dapr.clients import DaprClient
+import json
+import logging, coloredlogs
 import os
-from ai.pr import PR
-from controllers.aihandler import AiHandler
-from controllers.filehandler import FileHandler
-
-from flask import Flask
-from flask_restful import  Api
-
-from business.rabbithandler import RabbitHandler
-from helpers.customformatter import CustomFormatter
-
-import coloredlogs, logging, time
-import asyncio
-#logging.basicConfig(level=logging.INFO)
-logging.getLogger("pika").setLevel(logging.WARNING)
-logging.getLogger('rabbitmq_client').setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG', logger = logger)
+coloredlogs.install('DEBUG', logger=logger)
 
 
-UPLOAD_FOLDER = 'files'
+
+app = FastAPI()
 
 
-async def main():
-    logger.info(f'[main] pre rabbithandler instance')
-    rabbitHandler = RabbitHandler.getInstance()
-    logger.info(f'[main] pre prepare connections')
-    await rabbitHandler.prepare_connections()
-    logger.info(f'[main] start waiting for connections to become ready ')
-    while not rabbitHandler.is_ready:
-        logger.debug(f'[main] rabbithandler is not ready yet')
-        time.sleep(2)
-    
-    logger.info(f'[main] rabbithandler is ready')
-
-    app = Flask(__name__)
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-    api = Api(app)
+@app.get('/test')
+async def test_root():
+    logger.debug('Start calling test route')
+    PUBSUB_NAME = 'pubsub'
+    TOPIC_NAME = 'ai.listmodels'
+    with DaprClient() as client:
+        result = client.publish_event(
+            pubsub_name=PUBSUB_NAME,
+            topic_name=TOPIC_NAME,
+            data=json.dumps({"success": True}),
+            data_content_type='application/json',
             
-    api.add_resource(FileHandler, "/files")
-    api.add_resource(AiHandler, "/ai")
+        )
+        logger.debug(f'Published event ... result = {result.headers}')
+        
+        
+@app.post('/upload')
+async def upload(file: UploadFile = File(...)):
+    logger.debug(f'Uploading file ... ')
+    try:
+        logger.debug('pre....')
+        contents = file.file.read()
+        upload_folder = os.getenv("UPLOAD_FOLDER", 'files')
+        logger.debug(f'using upload folder {upload_folder}')
+        file_name = os.path.join(upload_folder, file.filename)
+        logger.debug(f'file name {file_name}')
+        with open(file_name, 'wb') as f:
+            f.write(contents)
+    except Exception:
+        logger.error('Error uploading file')
+        return {"message": "There was an error uploading the file"}
+    finally:
+        logger.debug('closing file')
+        file.file.close()
+    logger.debug(f'Finished uploading file {file.filename}')
+    return {"message": f"Successfully uploaded {file.filename}"}
 
-    app.run(debug=False)    
+@app.get('/startai')
+async def start_ai_training():
+    logger.debug('Start calling start training route')
+    PUBSUB_NAME = 'pubsub'
+    TOPIC_NAME = 'ai.start.training'
+    with DaprClient() as client:
+        result = client.publish_event(
+            pubsub_name=PUBSUB_NAME,
+            topic_name=TOPIC_NAME,
+            data=json.dumps({"success": True}),
+            data_content_type='application/json',
+            
+        )
+        logger.debug(f'Published event ... result = {result.headers}')
+        
 
-if  __name__ == "__main__":
-    asyncio.run(main())
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=8000)        

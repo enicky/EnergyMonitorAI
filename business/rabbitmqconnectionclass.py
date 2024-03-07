@@ -18,16 +18,16 @@ class RabbitMqConnectionClass(RMQConnection):
         
     def on_ready(self):
         
-        logger.info(f'{self.logPrefix} on_ready')
+        logger.debug(f'{self.logPrefix} on_ready')
         self.ready = True
         self._on_ready_callback()
         return super().on_ready()
     
     
     def on_close(self, permanent=False):
-        logger.info(f'{self.logPrefix} on_close')
+        logger.debug(f'{self.logPrefix} on_close')
         return super().on_close(permanent)    
         
     def on_error(self, error: MandatoryError | DeclarationError):
-        logger.info(f'{self.logPrefix} on_error {error}')
+        logger.debug(f'{self.logPrefix} on_error {error}')
         return super().on_error(error)
